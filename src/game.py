@@ -36,9 +36,13 @@ class Game(Scene):
         self.map = Map(self._get_maze())
         self.padding = padding
 
+        self.player_x = (max(square.x for square in self.map.squares) + 1) // 2
+        self.player_y = (max(square.y for square in self.map.squares) + 1) // 2
+
     def render(self):
         self._draw_borders()
         self._render_pacman(self.app.pacman_tex)
+        self._move()
 
     def _layout(self):
         cols = max(square.x for square in self.map.squares) + 1
@@ -53,6 +57,32 @@ class Game(Scene):
         offset_y = (pyray.get_screen_height() - (side_len * rows)) // 2
 
         return side_len, offset_x, offset_y
+
+    def _get_square(self, x: int, y: int) -> Square | None:
+        for square in self.map.squares:
+            if square.x == x and square.y == y:
+                return square
+
+        return None
+
+    def _move(self):
+        current = self._get_square(self.player_x, self.player_y)
+        if current is None:
+            return
+
+        if pyray.is_key_pressed(pyray.KeyboardKey.KEY_W)and not current.north:
+            print("a")
+            self.player_y += 1
+
+        elif pyray.is_key_pressed(pyray.KeyboardKey.KEY_A) and not current.west:
+            self.player_x -= 1
+
+        elif pyray.is_key_pressed(pyray.KeyboardKey.KEY_S) and not current.south:
+            self.player_y -= 1
+
+        elif pyray.is_key_pressed(pyray.KeyboardKey.KEY_D) and not current.east:
+            self.player_x += 1
+
 
     def _draw_borders(self):
         side_len, offset_x, offset_y = self._layout()
@@ -84,21 +114,13 @@ class Game(Scene):
 
     def _render_pacman(self, pacman_tex: pyray.Texture):
         side_len, offset_x, offset_y = self._layout()
-        cols = max(square.x for square in self.map.squares) + 1
-        rows = max(square.y for square in self.map.squares) + 1
 
-        pixel_x = offset_x + (cols // 2) * side_len
-        pixel_y = offset_y + (rows // 2) * side_len
+        pixel_x = offset_x + self.player_x * side_len
+        pixel_y = offset_y + self.player_y * side_len
 
         scale = side_len / pacman_tex.width
 
         pyray.draw_texture_ex(pacman_tex, (pixel_x, pixel_y), 0.0, scale, pyray.WHITE)
-
-        if pyray.is_key_down(pyray.KeyboardKey.KEY_W):
-            self._move(pacman_tex, "up")
-
-    def _move(self, pacman_tex: pyray.Texture, direction: str):
-        pass
 
     def _get_maze(self):
         generator = MazeGenerator(
