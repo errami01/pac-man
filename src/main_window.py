@@ -10,7 +10,7 @@ class MainWindow:
         self.game = Game(self, self.parser)
         self.pacman_tex = None
 
-        self.scene = self.game
+        self.scene = self.menu
 
     def start(self):
         pyray.init_window(800, 800, "Pac-man")
