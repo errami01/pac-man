@@ -51,6 +51,7 @@ class Game(Scene):
         self.lives = self.parser.lives
 
         self.pacgums: list[Pacgum] = self._spawn_pacgums()
+        self.super_pacgums: list[Pacgum] = self._spawn_super_pacgums()
 
     def render(self):
         self._handle_input()
@@ -169,19 +170,33 @@ class Game(Scene):
             center_x = offset_x + gum.square.x * side_len + side_len / 2
             center_y = offset_y + gum.square.y * side_len + side_len / 2
 
+            pyray.draw_circle(int(center_x), int(center_y), radius, pyray.GRAY)
+
+        for gum in self.super_pacgums:
+            center_x = offset_x + gum.square.x * side_len + side_len / 2
+            center_y = offset_y + gum.square.y * side_len + side_len / 2
+
             pyray.draw_circle(int(center_x), int(center_y), radius, pyray.RAYWHITE)
 
     def _collect_pacgums(self):
         grid_x, grid_y = round(self.player_x), round(self.player_y)
 
         remaining = []
+        remaining_super = []
         for gum in self.pacgums:
             if gum.square.x == grid_x and gum.square.y == grid_y:
                 self.score += self.parser.points_per_pacgum
             else:
                 remaining.append(gum)
 
+        for gum in self.super_pacgums:
+            if gum.square.x == grid_x and gum.square.y == grid_y:
+                self.score += self.parser.points_per_super_pacgum
+            else:
+                remaining_super.append(gum)
+
         self.pacgums = remaining
+        self.super_pacgums = remaining_super
 
     def _draw_bottom_hud(self):
         pyray.draw_text(
@@ -271,19 +286,42 @@ class Game(Scene):
 
         return visited
 
+    def _get_corners(self) -> list[tuple[int, int]]:
+        cols = max(square.x for square in self.map.squares) + 1
+        rows = max(square.y for square in self.map.squares) + 1
+
+        return [
+            (0, 0),
+            (cols - 1, 0),
+            (0, rows - 1),
+            (cols - 1, rows - 1)
+        ]
+
     def _spawn_pacgums(self) -> list[Pacgum]:
         start_x, start_y = round(self.player_x), round(self.player_y)
         reachable = self._reachable_cells(start_x, start_y)
 
-        candidates = list(reachable - {(start_x, start_y)})
+        candidates = list((reachable - {(start_x, start_y)}) - set(self._get_corners()))
         count = min(self.parser.pacgum, len(candidates))
 
         chosen = random.sample(candidates, count)
-        square = (self._get_square(x, y) for x, y in chosen)
 
         result = []
         for x, y in chosen:
             square = self._get_square(x, y)
+
+            if square is None:
+                continue
+
+            result.append(Pacgum(square=square))
+
+        return result
+
+    def _spawn_super_pacgums(self) -> list[Pacgum]:
+        result = []
+
+        for corner in self._get_corners():
+            square = self._get_square(corner[0], corner[1])
 
             if square is None:
                 continue
