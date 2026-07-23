@@ -13,6 +13,13 @@ class Square(BaseModel):
     x: int
     y: int
 
+class Ghost(BaseModel):
+    x: float
+    y: float
+    current_dir: tuple[int, int] = (0, 0)
+    mode: str = "chase"
+    color: pyray.Color
+
 class Pacgum(BaseModel):
     square: Square
 
@@ -53,11 +60,15 @@ class Game(Scene):
         self.pacgums: list[Pacgum] = self._spawn_pacgums()
         self.super_pacgums: list[Pacgum] = self._spawn_super_pacgums()
 
+        self.ghosts = self._spawn_ghosts()
+
     def render(self):
         self._handle_input()
         self._move(pyray.get_frame_time())
+        self._move_ghosts(pyray.get_frame_time())
         self._draw_borders()
         self._draw_pacgums()
+        self._draw_ghosts()
         self._render_pacman(self.app.pacman_tex)
         self._collect_pacgums()
         self._draw_bottom_hud()
@@ -329,3 +340,88 @@ class Game(Scene):
             result.append(Pacgum(square=square))
 
         return result
+
+    def _spawn_ghosts(self) -> list[Ghost]:
+        result = []
+        colors = [pyray.RED, pyray.YELLOW, pyray.GREEN, pyray.BLUE]
+
+        i = 0
+        for corner in self._get_corners():
+            result.append(Ghost(
+                x=corner[0],
+                y=corner[1],
+                color=colors[i]
+            ))
+
+            i += 1
+
+        return result
+
+    def _distance_map(self, start_x: int, start_y: int) -> dict[tuple[int, int], int]:
+        distances = {(start_x, start_y): 0}
+        queue = [(start_x, start_y)]
+
+        while queue:
+            x, y = queue.pop(0)
+            square = self._get_square(x, y)
+            if square is None:
+                continue
+
+            for nx, ny in self._neighbors(square):
+                if (nx, ny) not in distances:
+                    distances[(nx, ny)] = distances[(x, y)] + 1
+                    queue.append((nx, ny))
+
+        return distances
+
+    def _move_ghosts(self, dt: float):
+        player_x, player_y = round(self.player_x), round(self.player_y)
+        distances = self._distance_map(player_x, player_y)
+
+        for ghost in self.ghosts:
+            epsilon = 0.001
+            at_center = (
+                abs(ghost.x - round(ghost.x)) < epsilon and
+                abs(ghost.y - round(ghost.y)) < epsilon
+            )
+
+            if at_center:
+                gx, gy = round(ghost.x), round(ghost.y)
+                ghost.x, ghost.y = float(gx), float(gy)
+
+                square = self._get_square(gx, gy)
+                if square is None:
+                    continue
+
+                best_dir = ghost.current_dir
+                best_score = None
+
+                for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
+                    if not self._can_move(square, (dx, dy)):
+                        continue
+
+                    neighbor = (gx + dx, gy + dy)
+                    dist = distances.get(neighbor)
+                    if dist is None:
+                        continue
+
+                    score = dist if ghost.mode == "chase" else -dist
+
+                    if best_score is None or score < best_score:
+                        best_score = score
+                        best_dir = (dx, dy)
+
+                ghost.current_dir = best_dir
+
+            dx, dy = ghost.current_dir
+            ghost.x += dx * self.speed * dt
+            ghost.y += dy * self.speed * dt
+
+    def _draw_ghosts(self):
+        side_len, offset_x, offset_y = self._layout()
+
+        for ghost in self.ghosts:
+            center_x = offset_x + ghost.x * side_len + side_len / 2
+            center_y = offset_y + ghost.y * side_len + side_len / 2
+
+            pyray.draw_circle(int(center_x), int(center_y), side_len * 0.35, ghost.color)
