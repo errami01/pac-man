@@ -1,13 +1,11 @@
 import pyray
 from .config_parser import Parser
 from .menu import Menu
-from .game import Game
 
 class MainWindow:
     def __init__(self, config_path: str):
         self.parser = Parser(config_path)
         self.menu = Menu(self, self.parser)
-        self.game = Game(self, self.parser)
         self.pacman_tex = None
 
         self.scene = self.menu
@@ -27,3 +25,4 @@ class MainWindow:
             pyray.end_drawing()
 
         pyray.close_window()
+

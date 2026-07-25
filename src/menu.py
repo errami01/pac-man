@@ -1,7 +1,7 @@
 import json
 import pyray
 from .scene import Scene
-from .game import Game
+from .game.game_scene import Game
 from .config_parser import Parser
 
 class Menu(Scene):

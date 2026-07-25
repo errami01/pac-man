@@ -1,7 +1,8 @@
-from .scene import Scene
-from .config_parser import Parser
+from ..scene import Scene
+from ..config_parser import Parser
 from mazegenerator import MazeGenerator
 from pydantic import BaseModel
+from .ghost import Ghost
 import pyray
 import random
 
@@ -12,13 +13,6 @@ class Square(BaseModel):
     west: int
     x: int
     y: int
-
-class Ghost(BaseModel):
-    x: float
-    y: float
-    current_dir: tuple[int, int] = (0, 0)
-    mode: str = "chase"
-    color: pyray.Color
 
 class Pacgum(BaseModel):
     square: Square
@@ -47,8 +41,22 @@ class Game(Scene):
         self.map = Map(self._get_maze())
         self.padding = padding
 
-        self.player_x = float((max(square.x for square in self.map.squares) + 1) // 2)
-        self.player_y = float((max(square.y for square in self.map.squares) + 1) // 2)
+        self.pacman_tex = pyray.load_texture("res/pacman.png")
+        self.red_ghost_tex = pyray.load_texture("res/red_ghost.png")
+        self.green_ghost_tex = pyray.load_texture("res/green_ghost.png")
+        self.pink_ghost_tex = pyray.load_texture("res/pink_ghost.png")
+        self.blue_ghost_tex = pyray.load_texture("res/blue_ghost.png")
+
+        self.ghost_textures = [self.red_ghost_tex, self.green_ghost_tex, self.pink_ghost_tex, self.blue_ghost_tex]
+
+        self.player_x = (max(square.x for square in self.map.squares) + 1) // 2
+        self.player_y = (max(square.y for square in self.map.squares) + 1) // 2
+
+        self.draw_x = float(self.player_x)
+        self.draw_y = float(self.player_y)
+
+        self.progress = 0.0
+
         self.current_dir = (0, 0)
         self.next_dir = (0, 0)
         self.last_dir = (-1, 0)
@@ -61,6 +69,9 @@ class Game(Scene):
         self.super_pacgums: list[Pacgum] = self._spawn_super_pacgums()
 
         self.ghosts = self._spawn_ghosts()
+
+        for ghost in self.ghosts:
+            print(f"Ghost: {ghost.id}, mode: {ghost.mode}")
 
     def render(self):
         self._handle_input()
@@ -121,29 +132,41 @@ class Game(Scene):
         return False
 
     def _move(self, dt: float):
-        epsilon = 0.001
-        at_center = (
-            abs(self.player_x - round(self.player_x)) < epsilon and
-            abs(self.player_y - round(self.player_y)) < epsilon
-        )
-
-        if at_center:
-            grid_x, grid_y = round(self.player_x), round(self.player_y)
-            self.player_x, self.player_y = float(grid_x), float(grid_y)
-            
-            current = self._get_square(grid_x, grid_y)
+        if self.progress == 0.0:
+            current = self._get_square(self.player_x, self.player_y)
             if current is None:
                 return
 
             if self._can_move(current, self.next_dir):
                 self.current_dir = self.next_dir
-
-            if not self._can_move(current, self.next_dir):
+            elif not self._can_move(current, self.current_dir):
                 self.current_dir = (0, 0)
 
+        if self.current_dir == (0, 0):
+            self.draw_x, self.draw_y = float(self.player_x), float(self.player_y)
+            return
+
+        self.progress += self.speed * dt
+
+        while self.progress >= 1.0:
+            self.progress -= 1.0
+
+            dx, dy = self.current_dir
+            self.player_x += dx
+            self.player_y += dy
+
+            current = self._get_square(self.player_x, self.player_y)
+            if current is not None:
+                if self._can_move(current, self.next_dir):
+                    self.current_dir = self.next_dir
+                elif not self._can_move(current, self.current_dir):
+                    self.current_dir = (0, 0)
+                    self.progress = 0.0
+                    break
+
         dx, dy = self.current_dir
-        self.player_x += dx * self.speed * dt
-        self.player_y += dy * self.speed * dt
+        self.draw_x = self.player_x + dx * self.progress
+        self.draw_y = self.player_y + dy * self.progress
 
     def _draw_borders(self):
         side_len, offset_x, offset_y = self._layout()
@@ -190,7 +213,7 @@ class Game(Scene):
             pyray.draw_circle(int(center_x), int(center_y), radius, pyray.RAYWHITE)
 
     def _collect_pacgums(self):
-        grid_x, grid_y = round(self.player_x), round(self.player_y)
+        grid_x, grid_y = self.player_x, self.player_y
 
         remaining = []
         remaining_super = []
@@ -221,8 +244,8 @@ class Game(Scene):
     def _render_pacman(self, pacman_tex: pyray.Texture):
         side_len, offset_x, offset_y = self._layout()
 
-        pixel_x = offset_x + self.player_x * side_len
-        pixel_y = offset_y + self.player_y * side_len
+        pixel_x = offset_x + self.draw_x * side_len
+        pixel_y = offset_y + self.draw_y * side_len
 
         source_rec = pyray.Rectangle(0, 0, pacman_tex.width, pacman_tex.height)
         dest_rec = pyray.Rectangle(
@@ -343,14 +366,16 @@ class Game(Scene):
 
     def _spawn_ghosts(self) -> list[Ghost]:
         result = []
-        colors = [pyray.RED, pyray.YELLOW, pyray.GREEN, pyray.BLUE]
+        modes = ["chase", "ambush", "set", "random"]
 
         i = 0
-        for corner in self._get_corners():
+        for corner, mode in zip(self._get_corners(), modes):
             result.append(Ghost(
                 x=corner[0],
                 y=corner[1],
-                color=colors[i]
+                id=i,
+                speed=2.5,
+                mode=mode
             ))
 
             i += 1
@@ -375,53 +400,19 @@ class Game(Scene):
         return distances
 
     def _move_ghosts(self, dt: float):
-        player_x, player_y = round(self.player_x), round(self.player_y)
+        player_x, player_y = self.player_x, self.player_y
         distances = self._distance_map(player_x, player_y)
 
         for ghost in self.ghosts:
-            epsilon = 0.001
-            at_center = (
-                abs(ghost.x - round(ghost.x)) < epsilon and
-                abs(ghost.y - round(ghost.y)) < epsilon
-            )
-
-            if at_center:
-                gx, gy = round(ghost.x), round(ghost.y)
-                ghost.x, ghost.y = float(gx), float(gy)
-
-                square = self._get_square(gx, gy)
-                if square is None:
-                    continue
-
-                best_dir = ghost.current_dir
-                best_score = None
-
-                for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
-                    if not self._can_move(square, (dx, dy)):
-                        continue
-
-                    neighbor = (gx + dx, gy + dy)
-                    dist = distances.get(neighbor)
-                    if dist is None:
-                        continue
-
-                    score = dist if ghost.mode == "chase" else -dist
-
-                    if best_score is None or score < best_score:
-                        best_score = score
-                        best_dir = (dx, dy)
-
-                ghost.current_dir = best_dir
-
-            dx, dy = ghost.current_dir
-            ghost.x += dx * self.speed * dt
-            ghost.y += dy * self.speed * dt
+            if ghost.mode == "ambush":
+                ambush_target = ghost.ambush(self.player_x, self.player_y, self.current_dir, self._reachable_cells)
+                ambush_distances = self._distance_map(*ambush_target)
+                ghost.move(ambush_distances, dt, self._get_square, self._can_move)
+            else:
+                ghost.move(distances, dt, self._get_square, self._can_move)
 
     def _draw_ghosts(self):
         side_len, offset_x, offset_y = self._layout()
 
-        for ghost in self.ghosts:
-            center_x = offset_x + ghost.x * side_len + side_len / 2
-            center_y = offset_y + ghost.y * side_len + side_len / 2
-
-            pyray.draw_circle(int(center_x), int(center_y), side_len * 0.35, ghost.color)
+        for ghost, texture in zip(self.ghosts, self.ghost_textures):
+            ghost.draw(offset_x, offset_y, side_len, texture)
