@@ -12,6 +12,7 @@ class Ghost(BaseModel):
     speed: float
     target_x: int = 0
     target_y: int = 0
+    flee_timer: float = 0
 
     def move(self, distances: dict[tuple[int, int], int], dt: float, get_square: Callable, can_move: Callable):
         dx, dy = self.current_dir
@@ -116,3 +117,5 @@ class Ghost(BaseModel):
             0.0,
             pyray.WHITE
         )
+
+        print(self.flee)

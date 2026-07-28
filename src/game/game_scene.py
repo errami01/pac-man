@@ -10,7 +10,7 @@ class Game(Scene):
     def __init__(self, app, parser: Parser, padding: int = 20):
         self.app = app
         self.parser = parser
-        self.map = Map(self._get_maze(), self.parser)
+        self.map = Map(self._get_maze(self.parser.seed), self.parser)
         self.padding = padding
 
         self.pacman_tex = pyray.load_texture("res/pacman.png")
@@ -18,6 +18,7 @@ class Game(Scene):
         self.pinky_tex = pyray.load_texture("res/pinky.png")
         self.inky_tex = pyray.load_texture("res/inky.png")
         self.clyde_tex = pyray.load_texture("res/clyde.png")
+        self.fright_tex = pyray.load_texture("res/fright.png")
 
         self.ghost_textures = [self.blinky_tex, self.pinky_tex, self.inky_tex, self.clyde_tex]
 
@@ -38,13 +39,12 @@ class Game(Scene):
         self.lives = self.parser.lives
 
         self.ghosts = self._spawn_ghosts()
-
-        for ghost in self.ghosts:
-            print(f"Ghost: {ghost.id}, mode: {ghost.mode}")
+        self.flee_timer = 0.0
 
     def render(self):
         self._handle_input()
         self._move(pyray.get_frame_time())
+        self._tick_flee_timer(pyray.get_frame_time())
         self._move_ghosts(pyray.get_frame_time())
 
         self.map.draw_borders()
@@ -118,6 +118,16 @@ class Game(Scene):
         self.draw_x = self.player_x + dx * self.progress
         self.draw_y = self.player_y + dy * self.progress
 
+    def _tick_flee_timer(self, dt: float):
+        if self.flee_timer <= 0:
+            return
+
+        self.flee_timer = max(0.0, self.flee_timer - dt)
+
+        if self.flee_timer == 0:
+            for ghost in self.ghosts:
+                ghost.flee = 0
+
     def _collect_pacgums(self):
         grid_x, grid_y = self.player_x, self.player_y
 
@@ -132,11 +142,17 @@ class Game(Scene):
         for gum in self.map.super_pacgums:
             if gum.square.x == grid_x and gum.square.y == grid_y:
                 self.score += self.parser.points_per_super_pacgum
+                self.flee_timer = 10.0
+                for ghost in self.ghosts:
+                    ghost.flee = 1
             else:
                 remaining_super.append(gum)
 
         self.map.pacgums = remaining
         self.map.super_pacgums = remaining_super
+
+        if len(self.map.pacgums) == 0 and len(self.map.super_pacgums) == 0:
+            self._generate_new_level()
 
     def _draw_bottom_hud(self):
         pyray.draw_text(
@@ -185,9 +201,9 @@ class Game(Scene):
 
         return angles[self.last_dir]
 
-    def _get_maze(self):
+    def _get_maze(self, seed: int):
         generator = MazeGenerator(
-            seed=self.parser.seed
+            seed=seed
         )
 
         return generator.maze
@@ -231,17 +247,20 @@ class Game(Scene):
         distances = self._distance_map(self.player_x, self.player_y)
 
         for ghost in self.ghosts:
-            if ghost.mode == "chase":
-                target = (self.player_x, self.player_y)
+            if ghost.flee == 0:
+                if ghost.mode == "chase":
+                    target = (self.player_x, self.player_y)
 
-            elif ghost.mode == "ambush":
-                target = ghost.ambush(self.player_x, self.player_y, self.current_dir, self.map.get_reachable_cells)
+                elif ghost.mode == "ambush":
+                    target = ghost.ambush(self.player_x, self.player_y, self.current_dir, self.map.get_reachable_cells)
 
-            elif ghost.mode == "scatter":
-                target = self.map.get_corners()[ghost.id]
+                elif ghost.mode == "scatter":
+                    target = self.map.get_corners()[ghost.id]
 
+                else:
+                    target = random.choice(list(self.map.get_reachable_cells(self.player_x, self.player_y)))
             else:
-                target = random.choice(list(self.map.get_reachable_cells(self.player_x, self.player_y)))
+                target = max(distances.items(), key=lambda x: x[1])[0]
 
             distances = self._distance_map(*target)
             ghost.move(distances, dt, self.map.get_square, self._can_move)
@@ -250,4 +269,22 @@ class Game(Scene):
         side_len, offset_x, offset_y = self.map.get_layout()
 
         for ghost, texture in zip(self.ghosts, self.ghost_textures):
-            ghost.draw(offset_x, offset_y, side_len, texture)
+            if ghost.flee == 0:
+                ghost.draw(offset_x, offset_y, side_len, texture)
+            else:
+                ghost.draw(offset_x, offset_y, side_len, self.fright_tex)
+
+    def _generate_new_level(self):
+        self.map = Map(self._get_maze(0), self.parser)
+        self.player_x = (max(square.x for square in self.map.squares) + 1) // 2
+        self.player_y = (max(square.y for square in self.map.squares) + 1) // 2
+
+        self.draw_x = float(self.player_x)
+        self.draw_y = float(self.player_y)
+
+        self.progress = 0.0
+
+        self.current_dir = (0, 0)
+        self.next_dir = (0, 0)
+        self.last_dir = (-1, 0)
+        self.ghosts = self._spawn_ghosts()
