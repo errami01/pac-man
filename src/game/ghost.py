@@ -29,19 +29,25 @@ class Ghost(BaseModel):
             reached = True
 
         if reached:
-            gx, gy = round(self.x), round(self.y)
+            gx, gy = int(self.x), int(self.y)
             square = get_square(gx, gy)
             if square is None:
                 self.current_dir = (0, 0)
                 return
 
+            opposite = (-dx, -dy)
+
             best_dir = (0, 0)
             best_score = None
 
             directions = [(0, -1), (0, 1), (-1, 0), (1, 0)]
-            directions = directions[self.id % 4:] + directions[:self.id % 4]
+            offset = self.id % len(directions)
+            directions = directions[offset:] + directions[:offset]
 
             for cdx, cdy in directions:
+                if (cdx, cdy) == opposite:
+                    continue
+
                 if not can_move(square, (cdx, cdy)):
                     continue
 
@@ -53,10 +59,15 @@ class Ghost(BaseModel):
                 if dist is None:
                     continue
 
-                score = dist if self.flee == 0 else -dist
-                if best_score is None or score < best_score:
-                    best_score = score
+                if best_score is None or dist < best_score:
+                    best_score = dist
                     best_dir = (cdx, cdy)
+
+            if best_score is None:
+                if can_move(square, opposite):
+                    best_dir = opposite
+                else:
+                    best_dir = (0, 0)
 
             self.current_dir = best_dir
             self.target_x = gx + best_dir[0]

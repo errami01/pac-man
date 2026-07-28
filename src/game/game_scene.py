@@ -1,53 +1,25 @@
 from ..scene import Scene
 from ..config_parser import Parser
 from mazegenerator import MazeGenerator
-from pydantic import BaseModel
 from .ghost import Ghost
+from .map import Map, Square
 import pyray
 import random
-
-class Square(BaseModel):
-    north: int
-    east: int
-    south: int
-    west: int
-    x: int
-    y: int
-
-class Pacgum(BaseModel):
-    square: Square
-
-class Map:
-    def __init__(self, maze: list[list[int]]):
-        self.squares: list[Square] = []
-
-        for y in range(len(maze)):
-            for x in range(len(maze[y])):
-                bin = format(maze[y][x], "04b")
-
-                self.squares.append(Square(
-                    north=int(bin[3]),
-                    east=int(bin[2]),
-                    south=int(bin[1]),
-                    west=int(bin[0]),
-                    x=x,
-                    y=y
-                ))
 
 class Game(Scene):
     def __init__(self, app, parser: Parser, padding: int = 20):
         self.app = app
         self.parser = parser
-        self.map = Map(self._get_maze())
+        self.map = Map(self._get_maze(), self.parser)
         self.padding = padding
 
         self.pacman_tex = pyray.load_texture("res/pacman.png")
-        self.red_ghost_tex = pyray.load_texture("res/red_ghost.png")
-        self.green_ghost_tex = pyray.load_texture("res/green_ghost.png")
-        self.pink_ghost_tex = pyray.load_texture("res/pink_ghost.png")
-        self.blue_ghost_tex = pyray.load_texture("res/blue_ghost.png")
+        self.blinky_tex = pyray.load_texture("res/blinky.png")
+        self.pinky_tex = pyray.load_texture("res/pinky.png")
+        self.inky_tex = pyray.load_texture("res/inky.png")
+        self.clyde_tex = pyray.load_texture("res/clyde.png")
 
-        self.ghost_textures = [self.red_ghost_tex, self.green_ghost_tex, self.pink_ghost_tex, self.blue_ghost_tex]
+        self.ghost_textures = [self.blinky_tex, self.pinky_tex, self.inky_tex, self.clyde_tex]
 
         self.player_x = (max(square.x for square in self.map.squares) + 1) // 2
         self.player_y = (max(square.y for square in self.map.squares) + 1) // 2
@@ -65,9 +37,6 @@ class Game(Scene):
         self.score = 0
         self.lives = self.parser.lives
 
-        self.pacgums: list[Pacgum] = self._spawn_pacgums()
-        self.super_pacgums: list[Pacgum] = self._spawn_super_pacgums()
-
         self.ghosts = self._spawn_ghosts()
 
         for ghost in self.ghosts:
@@ -77,33 +46,14 @@ class Game(Scene):
         self._handle_input()
         self._move(pyray.get_frame_time())
         self._move_ghosts(pyray.get_frame_time())
-        self._draw_borders()
-        self._draw_pacgums()
+
+        self.map.draw_borders()
+        self.map.draw_pacgums()
+
         self._draw_ghosts()
         self._render_pacman(self.app.pacman_tex)
         self._collect_pacgums()
         self._draw_bottom_hud()
-
-    def _layout(self):
-        cols = max(square.x for square in self.map.squares) + 1
-        rows = max(square.y for square in self.map.squares) + 1
-
-        side_len = min(
-            (pyray.get_screen_width() - (self.padding * 2)) // cols,
-            (pyray.get_screen_height() - (self.padding * 2)) // rows
-        )
-
-        offset_x = (pyray.get_screen_width() - (side_len * cols)) // 2
-        offset_y = (pyray.get_screen_height() - (side_len * rows)) // 2
-
-        return side_len, offset_x, offset_y
-
-    def _get_square(self, x: int, y: int) -> Square | None:
-        for square in self.map.squares:
-            if square.x == x and square.y == y:
-                return square
-
-        return None
 
     def _handle_input(self):
         if pyray.is_key_down(pyray.KeyboardKey.KEY_W):
@@ -133,7 +83,7 @@ class Game(Scene):
 
     def _move(self, dt: float):
         if self.progress == 0.0:
-            current = self._get_square(self.player_x, self.player_y)
+            current = self.map.get_square(self.player_x, self.player_y)
             if current is None:
                 return
 
@@ -155,7 +105,7 @@ class Game(Scene):
             self.player_x += dx
             self.player_y += dy
 
-            current = self._get_square(self.player_x, self.player_y)
+            current = self.map.get_square(self.player_x, self.player_y)
             if current is not None:
                 if self._can_move(current, self.next_dir):
                     self.current_dir = self.next_dir
@@ -168,69 +118,25 @@ class Game(Scene):
         self.draw_x = self.player_x + dx * self.progress
         self.draw_y = self.player_y + dy * self.progress
 
-    def _draw_borders(self):
-        side_len, offset_x, offset_y = self._layout()
-
-        for square in self.map.squares:
-            x = offset_x + square.x * side_len
-            y = offset_y + square.y * side_len
-
-            if square.north:
-                pyray.draw_line(x, y, x + side_len, y, pyray.RAYWHITE)
-
-            if square.south:
-                pyray.draw_line(x, y + side_len, x + side_len, y + side_len, pyray.RAYWHITE)
-
-            if square.west:
-                pyray.draw_line(x, y, x, y + side_len, pyray.RAYWHITE)
-
-            if square.east:
-                pyray.draw_line(x + side_len, y, x + side_len, y + side_len, pyray.RAYWHITE)
-
-            if square.north and square.south and square.east and square.west:
-                pyray.draw_rectangle(
-                    x,
-                    y,
-                    side_len,
-                    side_len,
-                    pyray.YELLOW
-                )
-
-    def _draw_pacgums(self):
-        side_len, offset_x, offset_y = self._layout()
-        radius = side_len * 0.12
-
-        for gum in self.pacgums:
-            center_x = offset_x + gum.square.x * side_len + side_len / 2
-            center_y = offset_y + gum.square.y * side_len + side_len / 2
-
-            pyray.draw_circle(int(center_x), int(center_y), radius, pyray.GRAY)
-
-        for gum in self.super_pacgums:
-            center_x = offset_x + gum.square.x * side_len + side_len / 2
-            center_y = offset_y + gum.square.y * side_len + side_len / 2
-
-            pyray.draw_circle(int(center_x), int(center_y), radius, pyray.RAYWHITE)
-
     def _collect_pacgums(self):
         grid_x, grid_y = self.player_x, self.player_y
 
         remaining = []
         remaining_super = []
-        for gum in self.pacgums:
+        for gum in self.map.pacgums:
             if gum.square.x == grid_x and gum.square.y == grid_y:
                 self.score += self.parser.points_per_pacgum
             else:
                 remaining.append(gum)
 
-        for gum in self.super_pacgums:
+        for gum in self.map.super_pacgums:
             if gum.square.x == grid_x and gum.square.y == grid_y:
                 self.score += self.parser.points_per_super_pacgum
             else:
                 remaining_super.append(gum)
 
-        self.pacgums = remaining
-        self.super_pacgums = remaining_super
+        self.map.pacgums = remaining
+        self.map.super_pacgums = remaining_super
 
     def _draw_bottom_hud(self):
         pyray.draw_text(
@@ -242,7 +148,7 @@ class Game(Scene):
         )
 
     def _render_pacman(self, pacman_tex: pyray.Texture):
-        side_len, offset_x, offset_y = self._layout()
+        side_len, offset_x, offset_y = self.map.get_layout()
 
         pixel_x = offset_x + self.draw_x * side_len
         pixel_y = offset_y + self.draw_y * side_len
@@ -286,90 +192,12 @@ class Game(Scene):
 
         return generator.maze
 
-    def _neighbors(self, square: Square) -> list[tuple[int, int]]:
-        neighbors = []
-
-        if not square.north:
-            neighbors.append((square.x, square.y - 1))
-        if not square.south:
-            neighbors.append((square.x, square.y + 1))
-        if not square.east:
-            neighbors.append((square.x + 1, square.y))
-        if not square.west:
-            neighbors.append((square.x - 1, square.y))
-
-        return neighbors
-
-    def _reachable_cells(self, start_x: int, start_y: int) -> set[tuple[int, int]]:
-        visited: set[tuple[int, int]] = set()
-        queue = [(start_x, start_y)]
-
-        while queue:
-            x, y = queue.pop()
-            if (x, y) in visited:
-                continue
-
-            visited.add((x, y))
-            square = self._get_square(x, y)
-            if square is None:
-                continue
-
-            for nx, ny in self._neighbors(square):
-                if (nx, ny) not in visited:
-                    queue.append((nx, ny))
-
-        return visited
-
-    def _get_corners(self) -> list[tuple[int, int]]:
-        cols = max(square.x for square in self.map.squares) + 1
-        rows = max(square.y for square in self.map.squares) + 1
-
-        return [
-            (0, 0),
-            (cols - 1, 0),
-            (0, rows - 1),
-            (cols - 1, rows - 1)
-        ]
-
-    def _spawn_pacgums(self) -> list[Pacgum]:
-        start_x, start_y = round(self.player_x), round(self.player_y)
-        reachable = self._reachable_cells(start_x, start_y)
-
-        candidates = list((reachable - {(start_x, start_y)}) - set(self._get_corners()))
-        count = min(self.parser.pacgum, len(candidates))
-
-        chosen = random.sample(candidates, count)
-
-        result = []
-        for x, y in chosen:
-            square = self._get_square(x, y)
-
-            if square is None:
-                continue
-
-            result.append(Pacgum(square=square))
-
-        return result
-
-    def _spawn_super_pacgums(self) -> list[Pacgum]:
-        result = []
-
-        for corner in self._get_corners():
-            square = self._get_square(corner[0], corner[1])
-
-            if square is None:
-                continue
-
-            result.append(Pacgum(square=square))
-
-        return result
-
     def _spawn_ghosts(self) -> list[Ghost]:
         result = []
-        modes = ["chase", "ambush", "set", "random"]
+        modes = ["chase", "ambush", "scatter", "random"]
 
         i = 0
-        for corner, mode in zip(self._get_corners(), modes):
+        for corner, mode in zip(self.map.get_corners(), modes):
             result.append(Ghost(
                 x=corner[0],
                 y=corner[1],
@@ -388,11 +216,11 @@ class Game(Scene):
 
         while queue:
             x, y = queue.pop(0)
-            square = self._get_square(x, y)
+            square = self.map.get_square(x, y)
             if square is None:
                 continue
 
-            for nx, ny in self._neighbors(square):
+            for nx, ny in self.map.get_neighbors(square):
                 if (nx, ny) not in distances:
                     distances[(nx, ny)] = distances[(x, y)] + 1
                     queue.append((nx, ny))
@@ -400,19 +228,26 @@ class Game(Scene):
         return distances
 
     def _move_ghosts(self, dt: float):
-        player_x, player_y = self.player_x, self.player_y
-        distances = self._distance_map(player_x, player_y)
+        distances = self._distance_map(self.player_x, self.player_y)
 
         for ghost in self.ghosts:
-            if ghost.mode == "ambush":
-                ambush_target = ghost.ambush(self.player_x, self.player_y, self.current_dir, self._reachable_cells)
-                ambush_distances = self._distance_map(*ambush_target)
-                ghost.move(ambush_distances, dt, self._get_square, self._can_move)
+            if ghost.mode == "chase":
+                target = (self.player_x, self.player_y)
+
+            elif ghost.mode == "ambush":
+                target = ghost.ambush(self.player_x, self.player_y, self.current_dir, self.map.get_reachable_cells)
+
+            elif ghost.mode == "scatter":
+                target = self.map.get_corners()[ghost.id]
+
             else:
-                ghost.move(distances, dt, self._get_square, self._can_move)
+                target = random.choice(list(self.map.get_reachable_cells(self.player_x, self.player_y)))
+
+            distances = self._distance_map(*target)
+            ghost.move(distances, dt, self.map.get_square, self._can_move)
 
     def _draw_ghosts(self):
-        side_len, offset_x, offset_y = self._layout()
+        side_len, offset_x, offset_y = self.map.get_layout()
 
         for ghost, texture in zip(self.ghosts, self.ghost_textures):
             ghost.draw(offset_x, offset_y, side_len, texture)
