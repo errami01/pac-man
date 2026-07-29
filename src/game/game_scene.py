@@ -1,3 +1,4 @@
+from ..result import Result
 from ..scene import Scene
 from ..config_parser import Parser
 from mazegenerator import MazeGenerator
@@ -41,11 +42,15 @@ class Game(Scene):
         self.ghosts = self._spawn_ghosts()
         self.flee_timer = 0.0
 
+        self.level_count = 1
+
     def render(self):
         self._handle_input()
         self._move(pyray.get_frame_time())
         self._tick_flee_timer(pyray.get_frame_time())
+        self._tick_ghost_respawn(pyray.get_frame_time())
         self._move_ghosts(pyray.get_frame_time())
+        self._handle_ghost_collision()
 
         self.map.draw_borders()
         self.map.draw_pacgums()
@@ -152,12 +157,24 @@ class Game(Scene):
         self.map.super_pacgums = remaining_super
 
         if len(self.map.pacgums) == 0 and len(self.map.super_pacgums) == 0:
+            if self.level_count == 3:
+                self._end(True)
+
             self._generate_new_level()
+            self.level_count += 1
 
     def _draw_bottom_hud(self):
         pyray.draw_text(
             f"Score: {self.score}",
             30,
+            pyray.get_screen_height() - 20,
+            20,
+            pyray.RAYWHITE
+        )
+
+        pyray.draw_text(
+            f"Lives: {self.lives}",
+            160,
             pyray.get_screen_height() - 20,
             20,
             pyray.RAYWHITE
@@ -217,6 +234,8 @@ class Game(Scene):
             result.append(Ghost(
                 x=corner[0],
                 y=corner[1],
+                home_x=corner[0],
+                home_y=corner[1],
                 id=i,
                 speed=2.5,
                 mode=mode
@@ -269,10 +288,59 @@ class Game(Scene):
         side_len, offset_x, offset_y = self.map.get_layout()
 
         for ghost, texture in zip(self.ghosts, self.ghost_textures):
+            if ghost.eaten:
+                continue
+
             if ghost.flee == 0:
                 ghost.draw(offset_x, offset_y, side_len, texture)
             else:
                 ghost.draw(offset_x, offset_y, side_len, self.fright_tex)
+
+    def _handle_ghost_collision(self):
+        for ghost in self.ghosts:
+            if ghost.eaten:
+                continue
+
+            if round(ghost.x) == round(self.draw_x) and round(ghost.y) == round(self.draw_y):
+                if ghost.flee == 0:
+                    self._handle_player_death()
+                else:
+                    ghost.eaten = 1
+                    ghost.respawn_timer = 5.0
+                    ghost.current_dir = (0, 0)
+                    self.score += self.parser.points_per_ghost
+
+    def _handle_player_death(self):
+        if self.lives == 1:
+            self._end(False)
+
+        self.player_x = (max(square.x for square in self.map.squares) + 1) // 2
+        self.player_y = (max(square.y for square in self.map.squares) + 1) // 2
+
+        self.draw_x = float(self.player_x)
+        self.draw_y = float(self.player_y)
+
+        self.progress = 0.0
+
+        self.current_dir = (0, 0)
+        self.next_dir = (0, 0)
+        self.last_dir = (-1, 0)
+        self.ghosts = self._spawn_ghosts()
+        self.lives -= 1
+
+    def _tick_ghost_respawn(self, dt: float):
+        for ghost in self.ghosts:
+            if not ghost.eaten:
+                continue
+
+            ghost.respawn_timer = max(0.0, ghost.respawn_timer - dt)
+
+            if ghost.respawn_timer == 0:
+                ghost.x, ghost.y = float(ghost.home_x), float(ghost.home_y)
+                ghost.target_x, ghost.target_y = ghost.home_x, ghost.home_y
+                ghost.current_dir = (0, 0)
+                ghost.eaten = 0
+                ghost.flee = 0
 
     def _generate_new_level(self):
         self.map = Map(self._get_maze(0), self.parser)
@@ -288,3 +356,6 @@ class Game(Scene):
         self.next_dir = (0, 0)
         self.last_dir = (-1, 0)
         self.ghosts = self._spawn_ghosts()
+
+    def _end(self, win: bool):
+        self.app.scene = Result(self.app, self.parser, win, self.score)

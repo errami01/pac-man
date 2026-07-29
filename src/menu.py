@@ -1,7 +1,6 @@
 import json
 import pyray
 from .scene import Scene
-from .game.game_scene import Game
 from .config_parser import Parser
 
 class Menu(Scene):
@@ -11,7 +10,7 @@ class Menu(Scene):
 
     def render(self):
         if pyray.is_key_pressed(pyray.KeyboardKey.KEY_SPACE):
-            self.app.scene = Game(self.app, self.parser)
+            self.app.go_to_game()
             return
 
         self._draw_menu()
@@ -58,11 +57,12 @@ class Menu(Scene):
 
                 pyray.draw_text(
                         score_text,
-                        int((pyray.get_screen_width() - pyray.measure_text(score_text, 10)) / 2),
-                        270 + i * 10,
-                        10,
+                        int((pyray.get_screen_width() - pyray.measure_text(score_text, 15)) / 2),
+                        270 + (i * 20),
+                        15,
                         pyray.RAYWHITE
                 )
+                i += 1
 
     def _load_highscores(self) -> dict:
         try:

@@ -8,7 +8,7 @@ class MainWindow:
         self.menu = Menu(self, self.parser)
         self.pacman_tex = None
 
-        self.scene = self.menu
+        self.go_to_menu()
 
     def start(self):
         pyray.init_window(800, 800, "Pac-man")
@@ -25,4 +25,11 @@ class MainWindow:
             pyray.end_drawing()
 
         pyray.close_window()
+    
+    def go_to_menu(self):
+        from .menu import Menu
+        self.scene = Menu(self, self.parser)
 
+    def go_to_game(self):
+        from .game.game_scene import Game
+        self.scene = Game(self, self.parser)
