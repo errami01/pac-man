@@ -43,14 +43,16 @@ class Game(Scene):
         self.flee_timer = 0.0
 
         self.level_count = 1
-
+        self.game_state: str = "RUNNING"
     def render(self):
-        self._handle_input()
-        self._move(pyray.get_frame_time())
-        self._tick_flee_timer(pyray.get_frame_time())
-        self._tick_ghost_respawn(pyray.get_frame_time())
-        self._move_ghosts(pyray.get_frame_time())
-        self._handle_ghost_collision()
+        self._update_game_state()
+        if self.game_state == "RUNNING":
+            self._handle_input()
+            self._move(pyray.get_frame_time())
+            self._tick_flee_timer(pyray.get_frame_time())
+            self._tick_ghost_respawn(pyray.get_frame_time()) 
+            self._move_ghosts(pyray.get_frame_time())
+            self._handle_ghost_collision()
 
         self.map.draw_borders()
         self.map.draw_pacgums()
@@ -69,6 +71,14 @@ class Game(Scene):
             self.next_dir = (-1, 0)
         elif pyray.is_key_down(pyray.KeyboardKey.KEY_D):
             self.next_dir = (1, 0)
+
+    def _update_game_state(self):
+        if pyray.is_key_pressed(pyray.KeyboardKey.KEY_SPACE):
+            if self.game_state == "RUNNING":
+                self.game_state = "PAUSE"
+            else:
+                self.game_state = "RUNNING"
+
 
     def _can_move(self, square: Square, direction: tuple[int, int]) -> bool:
         dx, dy = direction
