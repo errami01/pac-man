@@ -204,7 +204,14 @@ class Game(Scene):
             pyray.get_screen_height() - 20,
             20,
             pyray.RAYWHITE
-        )       
+        )  
+        pyray.draw_text(
+            f"Level: {self.level_count}",
+            420,
+            pyray.get_screen_height() - 20,
+            20,
+            pyray.RAYWHITE
+        )     
 
     def _render_pacman(self, pacman_tex: pyray.Texture):
         side_len, offset_x, offset_y = self.map.get_layout()
@@ -382,6 +389,7 @@ class Game(Scene):
         self.next_dir = (0, 0)
         self.last_dir = (-1, 0)
         self.ghosts = self._spawn_ghosts()
+        self.game_timer.reset()
 
     def _end(self, win: bool):
         self.app.scene = Result(self.app, self.parser, win, self.score)
