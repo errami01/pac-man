@@ -7,6 +7,7 @@ from .map import Map, Square
 import pyray
 import random
 from ..menu import PauseMenu
+from .timer import GameTimer
 
 class Game(Scene):
     def __init__(self, app, parser: Parser, padding: int = 20):
@@ -46,6 +47,7 @@ class Game(Scene):
         self.pause_menu = PauseMenu(self.app, parser)
         self.level_count = 1
         self.game_state: str = "RUNNING"
+        self.game_timer = GameTimer(self.parser.level_max_time)
     def render(self):
         self._update_game_state()
         if self.game_state == "RUNNING":
@@ -62,6 +64,9 @@ class Game(Scene):
             self._render_pacman(self.app.pacman_tex)
             self._collect_pacgums()
             self._draw_bottom_hud()
+            self.game_timer.update()
+            if self.game_timer.is_finished:
+                self._end(False)
         else:
             self.pause_menu.render()
 
@@ -193,6 +198,13 @@ class Game(Scene):
             20,
             pyray.RAYWHITE
         )
+        pyray.draw_text(
+            f"Time: {self.game_timer.time_left:.0f}",
+            290,
+            pyray.get_screen_height() - 20,
+            20,
+            pyray.RAYWHITE
+        )       
 
     def _render_pacman(self, pacman_tex: pyray.Texture):
         side_len, offset_x, offset_y = self.map.get_layout()
