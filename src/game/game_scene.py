@@ -6,6 +6,7 @@ from .ghost import Ghost
 from .map import Map, Square
 import pyray
 import random
+from ..menu import PauseMenu
 
 class Game(Scene):
     def __init__(self, app, parser: Parser, padding: int = 20):
@@ -42,6 +43,7 @@ class Game(Scene):
         self.ghosts = self._spawn_ghosts()
         self.flee_timer = 0.0
 
+        self.pause_menu = PauseMenu(self.app, parser)
         self.level_count = 1
         self.game_state: str = "RUNNING"
     def render(self):
@@ -53,14 +55,16 @@ class Game(Scene):
             self._tick_ghost_respawn(pyray.get_frame_time()) 
             self._move_ghosts(pyray.get_frame_time())
             self._handle_ghost_collision()
+            self.map.draw_borders()
+            self.map.draw_pacgums()
 
-        self.map.draw_borders()
-        self.map.draw_pacgums()
+            self._draw_ghosts()
+            self._render_pacman(self.app.pacman_tex)
+            self._collect_pacgums()
+            self._draw_bottom_hud()
+        else:
+            self.pause_menu.render()
 
-        self._draw_ghosts()
-        self._render_pacman(self.app.pacman_tex)
-        self._collect_pacgums()
-        self._draw_bottom_hud()
 
     def _handle_input(self):
         if pyray.is_key_down(pyray.KeyboardKey.KEY_W):

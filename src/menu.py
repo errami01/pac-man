@@ -70,3 +70,38 @@ class Menu(Scene):
                 return json.load(f)
         except FileNotFoundError:
             return {}
+
+
+class PauseMenu(Scene):
+
+    def __init__(self, app, parser: Parser):
+        self.app = app
+        self.parser = parser
+    def _draw_menu(self):
+
+        pyray.draw_text(
+            "Pause",
+            int((pyray.get_screen_width() - pyray.measure_text("Pause", 40)) / 2),
+            80,
+            40,
+            pyray.YELLOW
+        )
+        pyray.draw_text(
+            "RESUME [SPACE]",
+            int((pyray.get_screen_width() - pyray.measure_text("RESUME [SPACE]", 20)) / 2),
+            140,
+            20,
+            pyray.RAYWHITE
+        )
+        pyray.draw_text(
+            "END GAME [BACKSPACE]",
+            int((pyray.get_screen_width() - pyray.measure_text("END GAME [BACKSPACE]", 20)) / 2),
+            200,
+            20,
+            pyray.RAYWHITE
+        )
+
+    def render(self):
+        self._draw_menu()
+        if pyray.is_key_pressed(pyray.KeyboardKey.KEY_BACKSPACE):
+            self.app.scene = Menu(self.app, self.parser)
