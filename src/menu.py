@@ -57,9 +57,9 @@ class Menu(Scene):
 
                 pyray.draw_text(
                         score_text,
-                        int((pyray.get_screen_width() - pyray.measure_text(score_text, 15)) / 2),
+                        int((pyray.get_screen_width() - pyray.measure_text(score_text, 20)) / 2),
                         270 + (i * 20),
-                        15,
+                        20,
                         pyray.RAYWHITE
                 )
                 i += 1

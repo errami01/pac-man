@@ -3,3 +3,4 @@ src/__pycache__
 src/game/__pycache__
 .venv
 mazegenerator*
+my_test.py
