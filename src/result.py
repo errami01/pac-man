@@ -58,11 +58,18 @@ class Result(Scene):
 
         self._handle_name_input()
 
+    def _validate_char(self, char: int) -> bool:
+        is_space = (char == 32)
+        is_numeric = (48 <= char <= 57)
+        is_uppercase = (65 <= char <= 90)
+        is_lowercase = (97 <= char <= 122)
+
+        return is_space or is_numeric or is_uppercase or is_lowercase
+
     def _handle_name_input(self):
         char = pyray.get_char_pressed()
-
         while char > 0:
-            if 32 <= char <= 125 and len(self.player_name) < 20:
+            if self._validate_char(char) and len(self.player_name) < 10:
                 self.player_name += chr(char)
             char = pyray.get_char_pressed()
 
@@ -104,7 +111,6 @@ class Result(Scene):
             with open(self.parser.highscore_filename, "r+") as f:
                 current_highscores = json.load(f)
                 current_highscores = self._add_score(current_highscores)
-                print(current_highscores)
                 f.seek(0)
                 json.dump(current_highscores, f, indent=2)
         except FileNotFoundError:
