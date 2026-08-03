@@ -8,6 +8,7 @@ import pyray
 import random
 from ..menu import PauseMenu
 from .timer import GameTimer
+from ..helper import get_resource_path
 
 class Game(Scene):
     def __init__(self, app, parser: Parser, padding: int = 20):
@@ -16,12 +17,12 @@ class Game(Scene):
         self.map = Map(self._get_maze(self.parser.seed), self.parser)
         self.padding = padding
 
-        self.pacman_tex = pyray.load_texture("res/pacman.png")
-        self.blinky_tex = pyray.load_texture("res/blinky.png")
-        self.pinky_tex = pyray.load_texture("res/pinky.png")
-        self.inky_tex = pyray.load_texture("res/inky.png")
-        self.clyde_tex = pyray.load_texture("res/clyde.png")
-        self.fright_tex = pyray.load_texture("res/fright.png")
+        self.pacman_tex = pyray.load_texture(get_resource_path("res/pacman.png"))
+        self.blinky_tex = pyray.load_texture(get_resource_path("res/blinky.png"))
+        self.pinky_tex = pyray.load_texture(get_resource_path("res/pinky.png"))
+        self.inky_tex = pyray.load_texture(get_resource_path("res/inky.png"))
+        self.clyde_tex = pyray.load_texture(get_resource_path("res/clyde.png"))
+        self.fright_tex = pyray.load_texture(get_resource_path("res/fright.png"))
 
         self.ghost_textures = [self.blinky_tex, self.pinky_tex, self.inky_tex, self.clyde_tex]
 

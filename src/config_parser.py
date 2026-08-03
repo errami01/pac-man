@@ -1,8 +1,11 @@
 import json
+from .helper import get_resource_path
 
 class Parser:
+    # Load your configuration safely
     def __init__(self, path: str):
-        with open(path) as f:
+        config_path = get_resource_path(path)
+        with open(config_path) as f:
             self.content = json.load(f)
 
         self.highscore_filename = self.content["highscore_filename"] if "highscore_filename" in self.content else "highscore.json"

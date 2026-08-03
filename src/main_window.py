@@ -1,6 +1,7 @@
 import pyray
 from .config_parser import Parser
 from .menu import Menu
+from .helper import get_resource_path
 
 class MainWindow:
     def __init__(self, config_path: str):
@@ -14,7 +15,7 @@ class MainWindow:
         pyray.init_window(800, 800, "Pac-man")
         pyray.set_target_fps(60)
 
-        self.pacman_tex = pyray.load_texture("res/pacman.png")
+        self.pacman_tex = pyray.load_texture(get_resource_path("res/pacman.png"))
 
         while not pyray.window_should_close():
             pyray.begin_drawing()
