@@ -101,8 +101,8 @@ We used a structured approach to drive development:
 - msturma: Focus on Game Engine, rendering pipeline, and Cheat Mode implementation.
 - aberrami: Focus on Quality Assurance (Flake8/Mypy), Documentation (PEP 257), Pause/Timer systems, Highscore logic, and Packaging for Itch.io.
 
-Evidence of our progress, including a project timeline and risk analysis, can be found in the [PROJECT_MANAGEMENT_DIRECTORY_LINK]
+More about project management, including a project timeline and risk analysis, can be found in the [PROJECT_MANAGEMENT_DIRECTORY](./management)
 
 
-https://pngimg.com/image/73648
-https://www.pngmart.com/image/14728
+<!--https://pngimg.com/image/73648
+https://www.pngmart.com/image/14728 -->
