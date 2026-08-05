@@ -4,6 +4,7 @@ from .scene import Scene
 from .config_parser import Parser
 from pathlib import Path
 from typing import List, Dict
+from .helper import validate_loaded_scores
 
 class Result(Scene):
     def __init__(self, app, parser: Parser, win: bool, score: int):
@@ -83,6 +84,7 @@ class Result(Scene):
             self.app.go_to_menu()
 
     def _add_score(self, current_scores: Dict[str, int]) -> Dict[str, int]:
+        current_scores = validate_loaded_scores(current_scores)
         scores_list = list(current_scores.items())
         num_scores = len(scores_list)
         pos = 0
@@ -113,6 +115,13 @@ class Result(Scene):
                 current_highscores = self._add_score(current_highscores)
                 f.seek(0)
                 json.dump(current_highscores, f, indent=2)
-        except FileNotFoundError:
+                f.truncate()
+            
+        except Exception as e:
+            if not isinstance(e, FileNotFoundError):
+                print(f"Error:\n  {e}")
+                print("Creating new highscore file")
             with open(self.parser.highscore_filename, "w") as f:
                 json.dump({self.player_name: self.score}, f, indent=2)
+
+

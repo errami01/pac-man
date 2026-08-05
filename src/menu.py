@@ -2,6 +2,7 @@ import json
 import pyray
 from .scene import Scene
 from .config_parser import Parser
+from .helper import validate_loaded_scores
 
 class Menu(Scene):
     def __init__(self, app, parser: Parser):
@@ -17,6 +18,7 @@ class Menu(Scene):
 
     def _draw_menu(self):
         highscores = self._load_highscores()
+        highscores = validate_loaded_scores(highscores)
 
         pyray.draw_text(
             "Pac-Man",
@@ -68,7 +70,9 @@ class Menu(Scene):
         try:
             with open(self.parser.highscore_filename) as f:
                 return json.load(f)
-        except FileNotFoundError:
+        except Exception as e:
+            if not isinstance(e, FileNotFoundError):
+                print(f"Error:\n  {e}")
             return {}
 
 
