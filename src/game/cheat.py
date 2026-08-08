@@ -1,0 +1,8 @@
+from pydantic import BaseModel
+
+
+class Cheat(BaseModel):
+    invincibility: bool = False
+    ghost_freeze: bool = False
+    extra_lives: int = 0
+    increased_speed: float = 0.0

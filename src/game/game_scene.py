@@ -9,6 +9,8 @@ import random
 from ..menu import PauseMenu
 from .timer import GameTimer
 from ..helper import get_resource_path
+from .cheat import Cheat
+
 
 class Game(Scene):
     def __init__(self, app, parser: Parser, padding: int = 20):
@@ -49,13 +51,14 @@ class Game(Scene):
         self.level_count = 1
         self.game_state: str = "RUNNING"
         self.game_timer = GameTimer(self.parser.level_max_time)
+
     def render(self):
         self._update_game_state()
         if self.game_state == "RUNNING":
             self._handle_input()
             self._move(pyray.get_frame_time())
             self._tick_flee_timer(pyray.get_frame_time())
-            self._tick_ghost_respawn(pyray.get_frame_time()) 
+            self._tick_ghost_respawn(pyray.get_frame_time())
             self._move_ghosts(pyray.get_frame_time())
             self._handle_ghost_collision()
             self.map.draw_borders()
@@ -70,7 +73,6 @@ class Game(Scene):
                 self._end(False)
         else:
             self.pause_menu.render()
-
 
     def _handle_input(self):
         if pyray.is_key_down(pyray.KeyboardKey.KEY_W):
@@ -87,8 +89,8 @@ class Game(Scene):
             if self.game_state == "RUNNING":
                 self.game_state = "PAUSE"
             else:
+                self._update_cheats()
                 self.game_state = "RUNNING"
-
 
     def _can_move(self, square: Square, direction: tuple[int, int]) -> bool:
         dx, dy = direction
@@ -192,27 +194,37 @@ class Game(Scene):
             pyray.RAYWHITE
         )
 
-        pyray.draw_text(
-            f"Lives: {self.lives}",
-            160,
-            pyray.get_screen_height() - 20,
-            20,
-            pyray.RAYWHITE
-        )
+        if self.pause_menu.cheats.invincibility:
+            pyray.draw_text(
+                "Lives: ∞",
+                160,
+                pyray.get_screen_height() - 20,
+                20,
+                pyray.RAYWHITE
+            )
+        else:
+            pyray.draw_text(
+                f"Lives: {self.lives}",
+                160,
+                pyray.get_screen_height() - 20,
+                20,
+                pyray.RAYWHITE
+            )
+
         pyray.draw_text(
             f"Time: {self.game_timer.time_left:.0f}",
             290,
             pyray.get_screen_height() - 20,
             20,
             pyray.RAYWHITE
-        )  
+        )
         pyray.draw_text(
             f"Level: {self.level_count}",
             420,
             pyray.get_screen_height() - 20,
             20,
             pyray.RAYWHITE
-        )     
+        )
 
     def _render_pacman(self, pacman_tex: pyray.Texture):
         side_len, offset_x, offset_y = self.map.get_layout()
@@ -237,7 +249,6 @@ class Game(Scene):
             self._facing_angle(),
             pyray.WHITE
         )
-
 
     def _facing_angle(self) -> float:
         angles = {
@@ -331,6 +342,9 @@ class Game(Scene):
                 ghost.draw(offset_x, offset_y, side_len, self.fright_tex)
 
     def _handle_ghost_collision(self):
+        if self.pause_menu.cheats.invincibility:
+            return
+
         for ghost in self.ghosts:
             if ghost.eaten:
                 continue
@@ -361,6 +375,17 @@ class Game(Scene):
         self.last_dir = (-1, 0)
         self.ghosts = self._spawn_ghosts()
         self.lives -= 1
+
+    def _update_cheats(self):
+        self.speed += self.pause_menu.cheats.increased_speed
+        self.lives += self.pause_menu.cheats.extra_lives
+
+        if self.pause_menu.cheats.ghost_freeze:
+            for ghost in self.ghosts:
+                ghost.speed = 0.0
+        else:
+            for ghost in self.ghosts:
+                ghost.speed = 2.5
 
     def _tick_ghost_respawn(self, dt: float):
         for ghost in self.ghosts:

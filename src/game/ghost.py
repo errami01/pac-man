@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import Callable
 import pyray
 
+
 class Ghost(BaseModel):
     x: float
     y: float
@@ -23,7 +24,7 @@ class Ghost(BaseModel):
             return
 
         dx, dy = self.current_dir
-    
+
         step = self.speed * dt
         self.x += dx * step
         self.y += dy * step
