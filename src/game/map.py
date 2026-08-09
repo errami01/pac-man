@@ -2,8 +2,21 @@ import random
 import pyray
 from pydantic import BaseModel
 from ..config_parser import Parser
+from typing import Tuple
+
 
 class Square(BaseModel):
+    """Represent a single tile in the maze with its boundaries.
+
+    Attributes:
+        north (int): Binary flag for a wall on the north side.
+        east (int): Binary flag for a wall on the east side.
+        south (int): Binary flag for a wall on the south side.
+        west (int): Binary flag for a wall on the west side.
+        x (int): Horizontal grid coordinate.
+        y (int): Vertical grid coordinate.
+    """
+
     north: int
     east: int
     south: int
@@ -11,34 +24,52 @@ class Square(BaseModel):
     x: int
     y: int
 
+
 class Pacgum(BaseModel):
+    """Represent a collectible item placed on a specific square tile."""
+
     square: Square
 
+
 class Map:
+    """Manage the game maze, layout boundaries, and collectible items."""
+
     def __init__(self, maze: list[list[int]], parser: Parser):
+        """Initialize the map and spawn items using layout configurations.
+
+        Args:
+            maze (list[list[int]]): 2D grid containing directional bitmasks.
+            parser (Parser): Configuration parser for game settings.
+        """
         self.squares: list[Square] = []
 
         for y in range(len(maze)):
             for x in range(len(maze[y])):
-                bin = format(maze[y][x], "04b")
+                bin_str = format(maze[y][x], "04b")
 
-                self.squares.append(Square(
-                    north=int(bin[3]),
-                    east=int(bin[2]),
-                    south=int(bin[1]),
-                    west=int(bin[0]),
-                    x=x,
-                    y=y
-                ))
+                self.squares.append(
+                    Square(
+                        north=int(bin_str[3]),
+                        east=int(bin_str[2]),
+                        south=int(bin_str[1]),
+                        west=int(bin_str[0]),
+                        x=x,
+                        y=y,
+                    )
+                )
+
+        max_x = max(square.x for square in self.squares)
+        max_y = max(square.y for square in self.squares)
 
         self.pacgums: list[Pacgum] = self._spawn_pacgums(
             parser.pacgum,
-            (max(square.x for square in self.squares) + 1) // 2,
-            (max(square.y for square in self.squares) + 1) // 2,
+            (max_x + 1) // 2,
+            (max_y + 1) // 2,
         )
         self.super_pacgums: list[Pacgum] = self._spawn_super_pacgums()
 
-    def draw_borders(self):
+    def draw_borders(self) -> None:
+        """Render the maze walls and solid blocks onto the screen."""
         side_len, offset_x, offset_y = self.get_layout()
 
         for square in self.squares:
@@ -49,30 +80,36 @@ class Map:
                 pyray.draw_line(x, y, x + side_len, y, pyray.RAYWHITE)
 
             if square.south:
-                pyray.draw_line(x, y + side_len, x + side_len, y + side_len, pyray.RAYWHITE)
+                pyray.draw_line(
+                    x, y + side_len, x + side_len, y + side_len, pyray.RAYWHITE
+                )
 
             if square.west:
                 pyray.draw_line(x, y, x, y + side_len, pyray.RAYWHITE)
 
             if square.east:
-                pyray.draw_line(x + side_len, y, x + side_len, y + side_len, pyray.RAYWHITE)
-
-            if square.north and square.south and square.east and square.west:
-                pyray.draw_rectangle(
-                    x,
-                    y,
-                    side_len,
-                    side_len,
-                    pyray.YELLOW
+                pyray.draw_line(
+                    x + side_len, y, x + side_len, y + side_len, pyray.RAYWHITE
                 )
 
-    def get_layout(self, padding: int = 20):
+            if square.north and square.south and square.east and square.west:
+                pyray.draw_rectangle(x, y, side_len, side_len, pyray.YELLOW)
+
+    def get_layout(self, padding: int = 20) -> Tuple[int, int, int]:
+        """Calculate tile dimensions and center offsets for the window layout.
+
+        Args:
+            padding (int): Window margin buffer in pixels.
+
+        Returns:
+            tuple: (side_len, offset_x, offset_y) sizing dimensions.
+        """
         cols = max(square.x for square in self.squares) + 1
         rows = max(square.y for square in self.squares) + 1
 
         side_len = min(
             (pyray.get_screen_width() - (padding * 2)) // cols,
-            (pyray.get_screen_height() - (padding * 2)) // rows
+            (pyray.get_screen_height() - (padding * 2)) // rows,
         )
 
         offset_x = (pyray.get_screen_width() - (side_len * cols)) // 2
@@ -81,6 +118,15 @@ class Map:
         return side_len, offset_x, offset_y
 
     def get_square(self, x: int, y: int) -> Square | None:
+        """Find and return a specific Square instance by its grid coordinates.
+
+        Args:
+            x (int): Horizontal grid lookup.
+            y (int): Vertical grid lookup.
+
+        Returns:
+            Square | None: The matching tile structure or None if missing.
+        """
         for square in self.squares:
             if square.x == x and square.y == y:
                 return square
@@ -88,6 +134,11 @@ class Map:
         return None
 
     def get_corners(self) -> list[tuple[int, int]]:
+        """Identify the layout's four exterior corner coordinates.
+
+        Returns:
+            list[tuple[int, int]]: List of grid locations for map corners.
+        """
         cols = max(square.x for square in self.squares) + 1
         rows = max(square.y for square in self.squares) + 1
 
@@ -95,10 +146,21 @@ class Map:
             (0, 0),
             (cols - 1, 0),
             (0, rows - 1),
-            (cols - 1, rows - 1)
+            (cols - 1, rows - 1),
         ]
 
-    def get_reachable_cells(self, start_x: int, start_y: int) -> set[tuple[int, int]]:
+    def get_reachable_cells(
+        self, start_x: int, start_y: int
+    ) -> set[tuple[int, int]]:
+        """Map all non-blocked cells connected to a starting coordinate.
+
+        Args:
+            start_x (int): Starting position grid coordinate X.
+            start_y (int): Starting position grid coordinate Y.
+
+        Returns:
+            set[tuple[int, int]]: All accessible grid coordinate locations.
+        """
         visited: set[tuple[int, int]] = set()
         queue = [(start_x, start_y)]
 
@@ -119,6 +181,14 @@ class Map:
         return visited
 
     def get_neighbors(self, square: Square) -> list[tuple[int, int]]:
+        """Retrieve coordinate adjacencies where no walls are present.
+
+        Args:
+            square (Square): The reference tile structure evaluated.
+
+        Returns:
+            list[tuple[int, int]]: Traversable adjacent grid neighbors.
+        """
         neighbors = []
 
         if not square.north:
@@ -132,10 +202,23 @@ class Map:
 
         return neighbors
 
-    def _spawn_pacgums(self, num: int, player_x: int, player_y: int) -> list[Pacgum]:
+    def _spawn_pacgums(
+        self, num: int, player_x: int, player_y: int
+    ) -> list[Pacgum]:
+        """Distribute pacgums across available connected path paths.
+
+        Args:
+            num (int): Target count of items requested.
+            player_x (int): Protected origin zone coordinate X.
+            player_y (int): Protected origin zone coordinate Y.
+
+        Returns:
+            list[Pacgum]: Successfully generated collectibles array.
+        """
         reachable = self.get_reachable_cells(player_x, player_y)
 
-        candidates = list((reachable - {(player_x, player_y)}) - set(self.get_corners()))
+        origin_set = {(player_x, player_y)}
+        candidates = list((reachable - origin_set) - set(self.get_corners()))
         count = min(num, len(candidates))
 
         chosen = random.sample(candidates, count)
@@ -152,6 +235,11 @@ class Map:
         return result
 
     def _spawn_super_pacgums(self) -> list[Pacgum]:
+        """Create powerful collectibles specifically localized on corners.
+
+        Returns:
+            list[Pacgum]: Array of items registered at corner structures.
+        """
         result = []
 
         for corner in self.get_corners():
@@ -164,7 +252,8 @@ class Map:
 
         return result
 
-    def draw_pacgums(self):
+    def draw_pacgums(self) -> None:
+        """Draw standard and super dots on screen using centered metrics."""
         side_len, offset_x, offset_y = self.get_layout()
         radius = side_len * 0.12
 
@@ -178,4 +267,6 @@ class Map:
             center_x = offset_x + gum.square.x * side_len + side_len / 2
             center_y = offset_y + gum.square.y * side_len + side_len / 2
 
-            pyray.draw_circle(int(center_x), int(center_y), radius, pyray.RAYWHITE)
+            pyray.draw_circle(
+                int(center_x), int(center_y), radius, pyray.RAYWHITE
+            )

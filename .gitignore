@@ -6,3 +6,4 @@ mazegenerator*
 my_test.py
 build/
 dist/
+highscore.json
