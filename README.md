@@ -1,5 +1,5 @@
-# Pac-Man: Ghosts! More Ghosts!
 *This project has been created as part of the 42 curriculum by msturma and aberrami.*
+# Pac-Man: Ghosts! More Ghosts!
 
 # Description
 This project is a complete, playable Pac-Man clone built in Python 3.10+. The goal is to navigate a procedurally generated maze, collect all "pacgums," and avoid four unique ghosts. The project emphasizes object-oriented programming, robust error handling (no tracebacks), and a modular architecture. It features a persistent highscore system, multiple levels with time limits, and a dedicated cheat mode for evaluation.
@@ -26,6 +26,11 @@ To generate the standalone executable for distribution (Itch.io):
 pyinstaller --noconfirm --onefile --windowed --add-data "config.json:." --add-data "res:res" pac-man.py
 ```
 The resulting binary can be found in the dist/ folder.
+
+The game can be downloaded from itcho.io:
+```
+https://pacman42t.itch.io/pac-man/download/9fZGgnroMADOwwvMDw27hFkORFN6W7tRUrjn1ssb
+```
 
 # Resources
 - Graphics: Raylib (pyray) - Used as the MLX-equivalent graphical library.
