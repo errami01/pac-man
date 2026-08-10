@@ -1,6 +1,9 @@
 *This project has been created as part of the 42 curriculum by msturma and aberrami.*
 # Pac-Man: Ghosts! More Ghosts!
-
+<!-- ![Alt text](res/gamescreen.png) -->
+<p >
+  <img src="res/gamescreen.png" alt="Project Screenshot" width="400">
+</p>
 # Description
 This project is a complete, playable Pac-Man clone built in Python 3.10+. The goal is to navigate a procedurally generated maze, collect all "pacgums," and avoid four unique ghosts. The project emphasizes object-oriented programming, robust error handling (no tracebacks), and a modular architecture. It features a persistent highscore system, multiple levels with time limits, and a dedicated cheat mode for evaluation.
 
@@ -20,6 +23,34 @@ python3 pac-man.py config.json
 # Or using the Makefile
 make run
 ```
+## GAMEPLAY & RULES
+- Objective: Eat all Pacgums (small dots) to clear the level.
+- Super-Pacgums: Eating the large dots in the corners makes 
+  ghosts edible for a short time.
+- Lives: You start with 3 lives. Touching a non-edible ghost 
+  resets you to the middle of the maze.
+- MOVEMENT:
+    * [W] - Move Up
+    * [A] - Move Left
+    * [S] - Move Down
+    * [D] - Move Right
+
+- GENERAL:
+    * [SPACE] - Start Game / Pause / Resume
+    * [BACKSPASE] - Return to the main menu
+    * [ESC]   - Exit Game
+- Scoring:
+    * Pacgum: +X points
+    * Super-pacgum: +Y points
+    * Edible Ghost: +Z points
+- CHEAT MODE OPTIONS(For Peer Review):
+    - Invincibility (Toggle)
+    - Level Skip (Instant Win)
+    - Freeze Ghosts
+    - Add Extra Life
+- Game Over: Occurs when all lives are lost or the level time 
+  limit expires.
+
 ## Packaging
 To generate the standalone executable for distribution (Itch.io):
 ```bash
