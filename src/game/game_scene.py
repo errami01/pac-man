@@ -32,6 +32,7 @@ class Game(Scene):
         self.parser = parser
         self.map = Map(self._get_maze(self.parser.seed), self.parser)
         self.padding = padding
+        self.last_level = 10
 
         self.pacman_tex = pyray.load_texture(
             get_resource_path("res/pacman.png"))
@@ -107,6 +108,12 @@ class Game(Scene):
             self.next_dir = (-1, 0)
         elif pyray.is_key_down(pyray.KeyboardKey.KEY_D):
             self.next_dir = (1, 0)
+        elif pyray.is_key_pressed(pyray.KeyboardKey.KEY_N):
+            if self.pause_menu.cheats.skip_level:
+                if self.level_count == self.last_level:
+                    self._end(True)
+                self._generate_new_level()
+                self.level_count += 1
 
     def _update_game_state(self) -> None:
         """Check for structural game session status changes like pauses."""
@@ -225,7 +232,7 @@ class Game(Scene):
         self.map.super_pacgums = remaining_super
 
         if len(self.map.pacgums) == 0 and len(self.map.super_pacgums) == 0:
-            if self.level_count == 3:
+            if self.level_count == self.last_level:
                 self._end(True)
 
             self._generate_new_level()

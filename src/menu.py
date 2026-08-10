@@ -73,9 +73,9 @@ class Menu(Scene):
             pyray.RAYWHITE
         )
         pyray.draw_text(
-            "UP [W]     DOWN [S]    RIGHT[D]    LEFT[A]",
+            "UP [ W ]  DOWN [ S ]  RIGHT [ D ]  LEFT [ A ]",
             int((pyray.get_screen_width() - pyray.measure_text(
-                "UP [W]     DOWN [S]    RIGHT[D]    LEFT[A]", 16,)) / 2),
+                "UP [ W ]  DOWN [ S ]  RIGHT [ D ]  LEFT [ A ]", 16,)) / 2),
             260,
             16,
             pyray.RAYWHITE
@@ -191,27 +191,38 @@ class PauseMenu(Scene):
         """Aligns and executes layout options for game cheat toggles."""
         row_height = 22
         checkbox_label_gap = 10
-        start_y = 250
+        start_y = 300
 
         max_label_width = pyray.measure_text("Increase speed", 15)
 
         x = int((pyray.get_screen_width() - 30 - max_label_width) / 2)
-
-        self.cheats.invincibility = self._draw_checkbox_row(
+        pyray.draw_text(
+            "CHEAT OPTIONS:",
+            int((pyray.get_screen_width() - pyray.measure_text(
+                "CHEAT OPTIONS:", 20)) / 2),
+            260,
+            20,
+            pyray.GOLD
+        )
+        self.cheats.skip_level = self._draw_checkbox_row(
             x, start_y, checkbox_label_gap,
+            "Skip Level [ N ]", self.cheats.skip_level
+        )
+        self.cheats.invincibility = self._draw_checkbox_row(
+            x, start_y + row_height, checkbox_label_gap,
             "Invincibility", self.cheats.invincibility
         )
         self.cheats.ghost_freeze = self._draw_checkbox_row(
-            x, start_y + row_height, checkbox_label_gap,
+            x, start_y + row_height * 2, checkbox_label_gap,
             "Ghost freeze", self.cheats.ghost_freeze
         )
         self.cheats.extra_lives = self._draw_number_input(
-            x, start_y + row_height * 2, checkbox_label_gap,
+            x, start_y + row_height * 3, checkbox_label_gap,
             "Extra lives", self.cheats.extra_lives
         )
 
         self.cheats.increased_speed = self._draw_number_input(
-            x, start_y + row_height * 3, checkbox_label_gap,
+            x, start_y + row_height * 4, checkbox_label_gap,
             "Increase speed", self.cheats.increased_speed
         )
 
