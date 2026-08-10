@@ -40,9 +40,9 @@ class Menu(Scene):
         pyray.draw_text(
             "Pac-Man",
             int((pyray.get_screen_width() - pyray.measure_text(
-                "Pac-Man", 40)) / 2),
+                "Pac-Man", 60)) / 2),
             80,
-            40,
+            60,
             pyray.YELLOW
         )
 
@@ -54,14 +54,48 @@ class Menu(Scene):
             20,
             pyray.RAYWHITE
         )
+        pyray.draw_text(
+            "How To Play:",
+            int((pyray.get_screen_width() - pyray.measure_text(
+                "How To Play:", 20)) / 2),
+            200,
+            20,
+            pyray.GOLD
+        )
+        pyray.draw_text(
+            "Navigate the maze, eat all the pacgums, and avoid "
+            "the ghosts to survive.",
+            int((pyray.get_screen_width() - pyray.measure_text(
+                "Navigate the maze, eat all the pacgums, "
+                "and avoid the ghosts to survive.", 16)) / 2),
+            230,
+            16,
+            pyray.RAYWHITE
+        )
+        pyray.draw_text(
+            "UP [W]     DOWN [S]    RIGHT[D]    LEFT[A]",
+            int((pyray.get_screen_width() - pyray.measure_text(
+                "UP [W]     DOWN [S]    RIGHT[D]    LEFT[A]", 16,)) / 2),
+            260,
+            16,
+            pyray.RAYWHITE
+        )
+        pyray.draw_text(
+            "EXIT [ESC]",
+            int((pyray.get_screen_width() - pyray.measure_text(
+                "EXIT [ESC]", 16)) / 2),
+            290,
+            16,
+            pyray.RAYWHITE
+        )
 
         pyray.draw_text(
             "highscores:",
             int((pyray.get_screen_width() - pyray.measure_text(
                 "highscores:", 20)) / 2),
-            200,
+            320,
             20,
-            pyray.RAYWHITE
+            pyray.GOLD
         )
 
         if len(self.highscores.keys()) == 0:
@@ -69,7 +103,7 @@ class Menu(Scene):
                 "no highscores yet",
                 int((pyray.get_screen_width() - pyray.measure_text(
                     "no highscores yet", 10)) / 2),
-                250,
+                350,
                 10,
                 pyray.RAYWHITE
             )
@@ -82,7 +116,7 @@ class Menu(Scene):
                     score_text,
                     int((pyray.get_screen_width() - pyray.measure_text(
                         score_text, 20)) / 2),
-                    270 + (i * 20),
+                    320 + (i * 30),
                     20,
                     pyray.RAYWHITE
                 )

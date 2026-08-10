@@ -23,7 +23,7 @@ class MainWindow:
 
     def start(self) -> None:
         """Initializes the window, loads textures, and starts the game loop."""
-        pyray.set_config_flags(pyray.FLAG_WINDOW_HIGHDPI)
+        pyray.set_config_flags(pyray.ConfigFlags.FLAG_WINDOW_HIGHDPI)
         pyray.init_window(800, 800, "Pac-man")
         pyray.set_target_fps(60)
 

@@ -1,7 +1,11 @@
 from ..result import Result
 from ..scene import Scene
 from ..config_parser import Parser
-from mazegenerator import MazeGenerator
+try:
+    from mazegenerator import MazeGenerator
+except Exception as e:
+    print(e)
+    raise Exception("Please, install masegenerator package first")
 from .ghost import Ghost
 from .map import Map, Square
 import pyray
