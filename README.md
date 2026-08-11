@@ -4,6 +4,7 @@
 <p >
   <img src="res/gamescreen.png" alt="Project Screenshot" width="400">
 </p>
+
 # Description
 This project is a complete, playable Pac-Man clone built in Python 3.10+. The goal is to navigate a procedurally generated maze, collect all "pacgums," and avoid four unique ghosts. The project emphasizes object-oriented programming, robust error handling (no tracebacks), and a modular architecture. It features a persistent highscore system, multiple levels with time limits, and a dedicated cheat mode for evaluation.
 
